@@ -20,7 +20,7 @@
     #else
     @_exported import SwiftFoundation
     #endif
-#else
+#elseif !os(WASI)
     @_exported import Foundation
 #endif
 

@@ -15,11 +15,12 @@
 /// test run.
 /// - seealso: `XCTestObservationCenter`
 public protocol XCTestObservation: AnyObject {
-
+#if !os(WASI)
     /// Sent immediately before tests begin as a hook for any pre-testing setup.
     /// - Parameter testBundle: The bundle containing the tests that were
     ///   executed.
     func testBundleWillStart(_ testBundle: Bundle)
+#endif
 
     /// Sent when a test suite starts executing.
     /// - Parameter testSuite: The test suite that started. Additional
@@ -51,6 +52,7 @@ public protocol XCTestObservation: AnyObject {
     ///   information can be retrieved from the associated XCTestRun.
     func testSuiteDidFinish(_ testSuite: XCTestSuite)
 
+#if !os(WASI)
     /// Sent immediately after all tests have finished as a hook for any
     /// post-testing activity. The test process will generally exit after this
     /// method returns, so if there is long running and/or asynchronous work to
@@ -59,6 +61,7 @@ public protocol XCTestObservation: AnyObject {
     /// - Parameter testBundle: The bundle containing the tests that were
     ///   executed.
     func testBundleDidFinish(_ testBundle: Bundle)
+#endif
 }
 
 // All `XCTestObservation` methods are optional, so empty default implementations are provided

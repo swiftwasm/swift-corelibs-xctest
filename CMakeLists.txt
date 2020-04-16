@@ -8,13 +8,16 @@ project(XCTest LANGUAGES Swift)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(USE_FOUNDATION_FRAMEWORK "Use Foundation.framework on Darwin" NO)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
   find_package(dispatch CONFIG REQUIRED)
   find_package(Foundation CONFIG REQUIRED)
 endif()
 
 include(SwiftSupport)
+
+if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
 include(GNUInstallDirs)
+endif()
 
 add_library(XCTest
   Sources/XCTest/Private/WallClockTimeMetric.swift
@@ -52,7 +55,7 @@ if(USE_FOUNDATION_FRAMEWORK)
   target_compile_definitions(XCTest PRIVATE
     USE_FOUNDATION_FRAMEWORK)
 endif()
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
   target_link_libraries(XCTest PRIVATE
     dispatch
     Foundation)
@@ -61,6 +64,13 @@ set_target_properties(XCTest PROPERTIES
   Swift_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/swift
   INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/swift)
 
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
+  target_compile_options(XCTest
+  PRIVATE
+    -sdk ${WASI_SDK_PREFIX}/share/wasi-sysroot
+    -target wasm32-unknown-wasi
+  )
+endif()
 
 if(ENABLE_TESTING)
   enable_testing()
