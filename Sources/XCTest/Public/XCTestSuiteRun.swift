@@ -11,6 +11,10 @@
 //  A test run for an `XCTestSuite`.
 //
 
+#if canImport(WASIFoundation)
+import WASIFoundation
+#endif
+
 /// A test run for an `XCTestSuite`.
 open class XCTestSuiteRun: XCTestRun {
     /// The combined `testDuration` of each test case run in the suite.

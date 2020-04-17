@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "pure-swift-json",
+        "repositoryURL": "https://github.com/fabianfett/pure-swift-json.git",
+        "state": {
+          "branch": null,
+          "revision": "816db7e4e35d584476ba52965224e4abf3517065",
+          "version": "0.2.1"
+        }
+      },
+      {
+        "package": "WASIFoundation",
+        "repositoryURL": "https://github.com/MaxDesiatov/WASIFoundation.git",
+        "state": {
+          "branch": "master",
+          "revision": "87665a15b3c396b7182a571dca65fe9e8547b9c1",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}

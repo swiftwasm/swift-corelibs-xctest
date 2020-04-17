@@ -1,4 +1,4 @@
-// swift-tools-version:4.0
+// swift-tools-version:4.2
 //
 // To build with auto-linking of the .swiftmodule use:
 // $ swift build -Xswiftc -module-link-name -Xswiftc XCTest
@@ -11,13 +11,14 @@ let package = Package(
     products: [
         .library(
             name: "XCTest",
-            type: .dynamic,
             targets: ["XCTest"]
         )
     ],
     dependencies: [
+        .package(url: "https://github.com/fabianfett/pure-swift-json.git", .upToNextMajor(from: "0.2.1")),
+        .package(url: "https://github.com/MaxDesiatov/WASIFoundation.git", .branch("master")),
     ],
     targets: [
-        .target(name: "XCTest", dependencies: [], path: "Sources"),
+        .target(name: "XCTest", dependencies: ["WASIFoundation"], path: "Sources"),
     ]
 )

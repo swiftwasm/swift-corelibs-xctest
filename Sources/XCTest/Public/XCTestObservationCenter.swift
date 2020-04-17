@@ -38,9 +38,11 @@ public class XCTestObservationCenter {
         observers.remove(testObserver.wrapper)
     }
 
+#if !os(WASI)
     internal func testBundleWillStart(_ testBundle: Bundle) {
         forEachObserver { $0.testBundleWillStart(testBundle) }
     }
+#endif
 
     internal func testSuiteWillStart(_ testSuite: XCTestSuite) {
         forEachObserver { $0.testSuiteWillStart(testSuite) }
@@ -66,9 +68,11 @@ public class XCTestObservationCenter {
         forEachObserver { $0.testSuiteDidFinish(testSuite) }
     }
 
+#if !os(WASI)
     internal func testBundleDidFinish(_ testBundle: Bundle) {
         forEachObserver { $0.testBundleDidFinish(testBundle) }
     }
+#endif
 
     internal func testCase(_ testCase: XCTestCase, didMeasurePerformanceResults results: String, file: StaticString, line: Int) {
         forEachInternalObserver { $0.testCase(testCase, didMeasurePerformanceResults: results, file: file, line: line) }

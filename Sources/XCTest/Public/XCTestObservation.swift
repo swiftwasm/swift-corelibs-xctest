@@ -66,11 +66,13 @@ public protocol XCTestObservation: AnyObject {
 
 // All `XCTestObservation` methods are optional, so empty default implementations are provided
 public extension XCTestObservation {
+    #if !os(WASI)
     func testBundleWillStart(_ testBundle: Bundle) {}
+    func testBundleDidFinish(_ testBundle: Bundle) {}
+    #endif
     func testSuiteWillStart(_ testSuite: XCTestSuite) {}
     func testCaseWillStart(_ testCase: XCTestCase) {}
     func testCase(_ testCase: XCTestCase, didFailWithDescription description: String, inFile filePath: String?, atLine lineNumber: Int) {}
     func testCaseDidFinish(_ testCase: XCTestCase) {}
     func testSuiteDidFinish(_ testSuite: XCTestSuite) {}
-    func testBundleDidFinish(_ testBundle: Bundle) {}
 }

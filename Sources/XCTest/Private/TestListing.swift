@@ -42,7 +42,7 @@ internal struct TestListing {
 
 protocol Listable {
     func list() -> [String]
-    func dictionaryRepresentation() -> NSDictionary
+    func dictionaryRepresentation() -> [String: Any]
 }
 
 private func moduleName(value: Any) -> String {
@@ -68,7 +68,7 @@ extension XCTestSuite: Listable {
         return listables.flatMap({ $0.list() })
     }
 
-    func dictionaryRepresentation() -> NSDictionary {
+    func dictionaryRepresentation() -> [String: Any] {
         let listedTests = NSArray(array: tests.compactMap({ ($0 as? Listable)?.dictionaryRepresentation() }))
         return NSDictionary(objects: [NSString(string: listingName),
                                       listedTests],
@@ -93,7 +93,7 @@ extension XCTestCase: Listable {
         return ["\(moduleName(value: self)).\(adjustedName)"]
     }
 
-    func dictionaryRepresentation() -> NSDictionary {
+    func dictionaryRepresentation() -> [String: Any] {
         let methodName = String(name.split(separator: ".").last!)
         return NSDictionary(object: NSString(string: methodName), forKey: NSString(string: "name"))
     }
