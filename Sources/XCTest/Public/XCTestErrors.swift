@@ -11,6 +11,14 @@
 //  Constants used in errors produced by the XCTest library.
 //
 
+#if os(WASI)
+public struct XCTestError {
+    public enum Code : Int {
+        case timeoutWhileWaiting
+        case failureWhileWaiting
+    }
+}
+#else
 /// The domain used by errors produced by the XCTest library.
 public let XCTestErrorDomain = "org.swift.XCTestErrorDomain"
 
@@ -32,6 +40,7 @@ public struct XCTestError : _BridgedStoredNSError {
         case failureWhileWaiting
     }
 }
+#endif
 
 public extension XCTestError {
     /// Indicates that one or more expectations failed to be fulfilled in time
