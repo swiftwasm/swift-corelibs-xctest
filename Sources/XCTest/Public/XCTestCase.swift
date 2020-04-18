@@ -48,6 +48,7 @@ open class XCTestCase: XCTest {
         return 1
     }
 
+#if !os(WASI)
     internal var currentWaiter: XCTWaiter?
 
     /// The set of expectations made upon this test case.
@@ -86,6 +87,7 @@ open class XCTestCase: XCTest {
 
     /// An internal object implementing performance measurements.
     internal var _performanceMeter: PerformanceMeter?
+#endif
 
     open override var testRunClass: AnyClass? {
         return XCTestCaseRun.self
@@ -99,7 +101,9 @@ open class XCTestCase: XCTest {
         XCTCurrentTestCase = self
         testRun.start()
         invokeTest()
+        #if !os(WASI)
         failIfExpectationsNotWaitedFor(_allExpectations)
+        #endif
         testRun.stop()
         XCTCurrentTestCase = nil
     }
@@ -160,7 +164,9 @@ open class XCTestCase: XCTest {
             atLine: lineNumber,
             expected: expected)
 
+#if !os(WASI)
         _performanceMeter?.abortMeasuring()
+#endif
 
         // FIXME: Apple XCTest does not throw a fatal error and crash the test
         //        process, it merely prevents the remainder of a testClosure
@@ -197,15 +203,21 @@ open class XCTestCase: XCTest {
 
     private var teardownBlocks: [() -> Void] = []
     private var teardownBlocksDequeued: Bool = false
+    #if !os(WASI)
     private let teardownBlocksQueue: DispatchQueue = DispatchQueue(label: "org.swift.XCTest.XCTestCase.teardownBlocks")
+    #endif
 
     /// Registers a block of teardown code to be run after the current test
     /// method ends.
     open func addTeardownBlock(_ block: @escaping () -> Void) {
+        #if os(WASI)
+        teardownBlocks.append(block)
+        #else
         teardownBlocksQueue.sync {
             precondition(!self.teardownBlocksDequeued, "API violation -- attempting to add a teardown block after teardown blocks have been dequeued")
             self.teardownBlocks.append(block)
         }
+        #endif
     }
 
     private func performSetUpSequence() {
@@ -243,12 +255,17 @@ open class XCTestCase: XCTest {
     }
 
     private func runTeardownBlocks() {
-        let blocks = teardownBlocksQueue.sync { () -> [() -> Void] in
+        let closure = { () -> [() -> Void] in
             self.teardownBlocksDequeued = true
             let blocks = self.teardownBlocks
             self.teardownBlocks = []
             return blocks
         }
+        #if os(WASI)
+        let blocks = closure()
+        #else
+        let blocks = teardownBlocksQueue.sync(closure)
+        #endif
 
         for block in blocks.reversed() {
             block()

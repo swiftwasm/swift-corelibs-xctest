@@ -65,7 +65,9 @@ public func XCTMain(_ testCases: [XCTestCaseEntry]) -> Never {
     XCTMain(testCases, arguments: CommandLine.arguments)
 }
 public func XCTMain(_ testCases: [XCTestCaseEntry], arguments: [String]) -> Never {
+    #if !os(WASI)
     let testBundle = Bundle.main
+    #endif
 
     let executionMode = ArgumentParser(arguments: arguments).executionMode
 
@@ -77,7 +79,11 @@ public func XCTMain(_ testCases: [XCTestCaseEntry], arguments: [String]) -> Neve
     let currentTestSuite: XCTestSuite
     if executionMode.selectedTestNames == nil {
         rootTestSuite = XCTestSuite(name: "All tests")
+        #if !os(WASI)
         currentTestSuite = XCTestSuite(name: "\(testBundle.bundleURL.lastPathComponent).xctest")
+        #else
+        currentTestSuite = XCTestSuite(name: "testBundle.xctest")
+        #endif
         rootTestSuite.addTest(currentTestSuite)
     } else {
         rootTestSuite = XCTestSuite(name: "Selected tests")
@@ -132,9 +138,13 @@ public func XCTMain(_ testCases: [XCTestCaseEntry], arguments: [String]) -> Neve
         let observationCenter = XCTestObservationCenter.shared
         observationCenter.addTestObserver(PrintObserver())
 
+#if !os(WASI)
         observationCenter.testBundleWillStart(testBundle)
+#endif
         rootTestSuite.run()
+#if !os(WASI)
         observationCenter.testBundleDidFinish(testBundle)
+#endif
 
         exit(rootTestSuite.testRun!.totalFailureCount == 0 ? EXIT_SUCCESS : EXIT_FAILURE)
     }
