@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "AnyCodable",
+        "repositoryURL": "https://github.com/MaxDesiatov/AnyCodable",
+        "state": {
+          "branch": "master",
+          "revision": "6324b004d13f203a56ac27d650932e0e14286adc",
+          "version": null
+        }
+      },
+      {
         "package": "pure-swift-json",
         "repositoryURL": "https://github.com/fabianfett/pure-swift-json.git",
         "state": {
@@ -15,7 +24,7 @@
         "repositoryURL": "https://github.com/MaxDesiatov/WASIFoundation.git",
         "state": {
           "branch": "master",
-          "revision": "87665a15b3c396b7182a571dca65fe9e8547b9c1",
+          "revision": "a533d932063fcc83c23a8673cb8141c7ee1b1503",
           "version": null
         }
       }

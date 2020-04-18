@@ -80,7 +80,9 @@ internal class PrintObserver: XCTestObservation {
 
     private lazy var dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+#if !os(WASI)
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+#endif
         return formatter
     }()
 
