@@ -15,11 +15,8 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/fabianfett/pure-swift-json.git", .upToNextMajor(from: "0.2.1")),
-        .package(url: "https://github.com/MaxDesiatov/WASIFoundation.git", .branch("master")),
-        .package(url: "https://github.com/MaxDesiatov/AnyCodable", .branch("master")),
     ],
     targets: [
-        .target(name: "XCTest", dependencies: ["AnyCodable", "WASIFoundation", "PureSwiftJSONCoding"], path: "Sources"),
+        .target(name: "XCTest", dependencies: [], path: "Sources"),
     ]
 )

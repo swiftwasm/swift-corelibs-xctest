@@ -11,9 +11,7 @@
 //  Implementation of the mode for printing the list of tests.
 //
 
-import AnyCodable
-import PureSwiftJSONCoding
-import WASIFoundation
+import Foundation
 
 internal struct TestListing {
     private let testSuite: XCTestSuite
@@ -39,14 +37,14 @@ internal struct TestListing {
     /// tree representation of test suites and test cases. This output is intended
     /// to be consumed by other tools.
     func printTestJSON() {
-        let json = Data(try! JSONEncoder().encode(testSuite.dictionaryRepresentation()))
+        let json = try! JSONSerialization.data(withJSONObject: testSuite.dictionaryRepresentation())
         print(String(data: json, encoding: .utf8)!)
     }
 }
 
 protocol Listable {
     func list() -> [String]
-    func dictionaryRepresentation() -> [String: AnyEncodable]
+    func dictionaryRepresentation() -> NSDictionary
 }
 
 private func moduleName(value: Any) -> String {
@@ -72,11 +70,12 @@ extension XCTestSuite: Listable {
         return listables.flatMap({ $0.list() })
     }
 
-    func dictionaryRepresentation() -> [String: AnyEncodable] {
-        [
-            "name": AnyEncodable(listingName),
-            "tests": AnyEncodable(tests.compactMap { ($0 as? Listable)?.dictionaryRepresentation() })
-        ]
+    func dictionaryRepresentation() -> NSDictionary {
+        let listedTests = NSArray(array: tests.compactMap({ ($0 as? Listable)?.dictionaryRepresentation() }))
+        return NSDictionary(objects: [NSString(string: listingName),
+                                      listedTests],
+                            forKeys: [NSString(string: "name"),
+                                      NSString(string: "tests")])
     }
 
     func findBundleTestSuite() -> XCTestSuite? {
@@ -96,7 +95,8 @@ extension XCTestCase: Listable {
         return ["\(moduleName(value: self)).\(adjustedName)"]
     }
 
-    func dictionaryRepresentation() -> [String: AnyEncodable] {
-        ["name": AnyEncodable(String(name.split(separator: ".").last!))]
+    func dictionaryRepresentation() -> NSDictionary {
+        let methodName = String(name.split(separator: ".").last!)
+        return NSDictionary(object: NSString(string: methodName), forKey: NSString(string: "name"))
     }
 }
