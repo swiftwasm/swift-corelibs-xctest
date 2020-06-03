@@ -20,8 +20,6 @@
     #else
     @_exported import SwiftFoundation
     #endif
-#elseif os(WASI)
-    import WASIFoundation
 #else
     @_exported import Foundation
 #endif
