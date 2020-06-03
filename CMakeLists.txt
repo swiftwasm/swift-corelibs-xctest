@@ -19,18 +19,30 @@ if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
 include(GNUInstallDirs)
 endif()
 
-add_library(XCTest
+set(XCTEST_WASI_UNAVAILABLE_SOURCES)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
+list(APPEND XCTEST_WASI_UNAVAILABLE_SOURCES
   Sources/XCTest/Private/WallClockTimeMetric.swift
+  Sources/XCTest/Private/PerformanceMeter.swift
+  Sources/XCTest/Private/WaiterManager.swift
+  Sources/XCTest/Public/XCTestCase+Performance.swift
+  Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift
+  Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift
+  Sources/XCTest/Public/Asynchronous/XCTNSNotificationExpectation.swift
+  Sources/XCTest/Public/Asynchronous/XCTNSPredicateExpectation.swift
+  Sources/XCTest/Public/Asynchronous/XCTWaiter.swift
+  Sources/XCTest/Public/Asynchronous/XCTWaiter+Validation.swift)
+endif()
+
+add_library(XCTest
   Sources/XCTest/Private/TestListing.swift
   Sources/XCTest/Private/XCTestCaseSuite.swift
   Sources/XCTest/Private/TestFiltering.swift
   Sources/XCTest/Private/XCTestInternalObservation.swift
   Sources/XCTest/Private/ObjectWrapper.swift
-  Sources/XCTest/Private/PerformanceMeter.swift
   Sources/XCTest/Private/PrintObserver.swift
   Sources/XCTest/Private/ArgumentParser.swift
   Sources/XCTest/Private/SourceLocation.swift
-  Sources/XCTest/Private/WaiterManager.swift
   Sources/XCTest/Private/IgnoredErrors.swift
   Sources/XCTest/Public/XCTestRun.swift
   Sources/XCTest/Public/XCTestMain.swift
@@ -42,15 +54,10 @@ add_library(XCTest
   Sources/XCTest/Public/XCTestCaseRun.swift
   Sources/XCTest/Public/XCAbstractTest.swift
   Sources/XCTest/Public/XCTestObservationCenter.swift
-  Sources/XCTest/Public/XCTestCase+Performance.swift
   Sources/XCTest/Public/XCTAssert.swift
   Sources/XCTest/Public/XCTSkip.swift
-  Sources/XCTest/Public/Asynchronous/XCTNSNotificationExpectation.swift
-  Sources/XCTest/Public/Asynchronous/XCTNSPredicateExpectation.swift
-  Sources/XCTest/Public/Asynchronous/XCTWaiter+Validation.swift
-  Sources/XCTest/Public/Asynchronous/XCTWaiter.swift
-  Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift
-  Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift)
+  
+  ${XCTEST_WASI_UNAVAILABLE_SOURCES})
 if(USE_FOUNDATION_FRAMEWORK)
   target_compile_definitions(XCTest PRIVATE
     USE_FOUNDATION_FRAMEWORK)
@@ -64,11 +71,12 @@ set_target_properties(XCTest PROPERTIES
   Swift_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/swift
   INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/swift)
 
-if(CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
+if(CMAKE_SYSTEM_NAME STREQUAL WASI)
   target_compile_options(XCTest
   PRIVATE
-    -sdk ${WASI_SDK_PREFIX}/share/wasi-sysroot
+    -sdk ${CMAKE_SYSROOT}
     -target wasm32-unknown-wasi
+    -I ${SWIFT_FOUNDATION_PATH}
   )
 endif()
 
