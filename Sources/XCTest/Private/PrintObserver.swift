@@ -14,9 +14,6 @@
 #if canImport(Glibc)
 import Glibc
 #endif
-#if canImport(WASIFoundation)
-import WASIFoundation
-#endif
 
 /// Prints textual representations of each XCTestObservation event to stdout.
 /// Mirrors the Apple XCTest output exactly.
