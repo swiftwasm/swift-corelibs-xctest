@@ -264,7 +264,7 @@ open class XCTestCase: XCTest {
         #if os(WASI)
         let blocks = closure()
         #else
-        let blocks = teardownBlocksQueue.sync(closure)
+        let blocks = teardownBlocksQueue.sync(execute: closure)
         #endif
 
         for block in blocks.reversed() {
