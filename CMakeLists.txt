@@ -8,26 +8,41 @@ project(XCTest LANGUAGES Swift)
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(USE_FOUNDATION_FRAMEWORK "Use Foundation.framework on Darwin" NO)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
   find_package(dispatch CONFIG REQUIRED)
   find_package(Foundation CONFIG REQUIRED)
 endif()
 
 include(SwiftSupport)
+
+if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
 include(GNUInstallDirs)
+endif()
+
+set(XCTEST_WASI_UNAVAILABLE_SOURCES)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
+list(APPEND XCTEST_WASI_UNAVAILABLE_SOURCES
+  Sources/XCTest/Private/WallClockTimeMetric.swift
+  Sources/XCTest/Private/PerformanceMeter.swift
+  Sources/XCTest/Private/WaiterManager.swift
+  Sources/XCTest/Public/XCTestCase+Performance.swift
+  Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift
+  Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift
+  Sources/XCTest/Public/Asynchronous/XCTNSNotificationExpectation.swift
+  Sources/XCTest/Public/Asynchronous/XCTNSPredicateExpectation.swift
+  Sources/XCTest/Public/Asynchronous/XCTWaiter.swift
+  Sources/XCTest/Public/Asynchronous/XCTWaiter+Validation.swift)
+endif()
 
 add_library(XCTest
-  Sources/XCTest/Private/WallClockTimeMetric.swift
   Sources/XCTest/Private/TestListing.swift
   Sources/XCTest/Private/XCTestCaseSuite.swift
   Sources/XCTest/Private/TestFiltering.swift
   Sources/XCTest/Private/XCTestInternalObservation.swift
   Sources/XCTest/Private/ObjectWrapper.swift
-  Sources/XCTest/Private/PerformanceMeter.swift
   Sources/XCTest/Private/PrintObserver.swift
   Sources/XCTest/Private/ArgumentParser.swift
   Sources/XCTest/Private/SourceLocation.swift
-  Sources/XCTest/Private/WaiterManager.swift
   Sources/XCTest/Private/IgnoredErrors.swift
   Sources/XCTest/Public/XCTestRun.swift
   Sources/XCTest/Public/XCTestMain.swift
@@ -39,20 +54,15 @@ add_library(XCTest
   Sources/XCTest/Public/XCTestCaseRun.swift
   Sources/XCTest/Public/XCAbstractTest.swift
   Sources/XCTest/Public/XCTestObservationCenter.swift
-  Sources/XCTest/Public/XCTestCase+Performance.swift
   Sources/XCTest/Public/XCTAssert.swift
   Sources/XCTest/Public/XCTSkip.swift
-  Sources/XCTest/Public/Asynchronous/XCTNSNotificationExpectation.swift
-  Sources/XCTest/Public/Asynchronous/XCTNSPredicateExpectation.swift
-  Sources/XCTest/Public/Asynchronous/XCTWaiter+Validation.swift
-  Sources/XCTest/Public/Asynchronous/XCTWaiter.swift
-  Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift
-  Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift)
+  
+  ${XCTEST_WASI_UNAVAILABLE_SOURCES})
 if(USE_FOUNDATION_FRAMEWORK)
   target_compile_definitions(XCTest PRIVATE
     USE_FOUNDATION_FRAMEWORK)
 endif()
-if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
   target_link_libraries(XCTest PRIVATE
     dispatch
     Foundation)
@@ -61,6 +71,14 @@ set_target_properties(XCTest PROPERTIES
   Swift_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/swift
   INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/swift)
 
+if(CMAKE_SYSTEM_NAME STREQUAL WASI)
+  target_compile_options(XCTest
+  PRIVATE
+    -sdk ${CMAKE_SYSROOT}
+    -target wasm32-unknown-wasi
+    -I ${SWIFT_FOUNDATION_PATH}
+  )
+endif()
 
 if(ENABLE_TESTING)
   enable_testing()
@@ -109,11 +127,11 @@ set_property(GLOBAL APPEND PROPERTY XCTest_EXPORTS XCTest)
 get_swift_host_arch(swift_arch)
 install(TARGETS XCTest
   ARCHIVE DESTINATION lib/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>
-  LIBRARY DESTINATION lib/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>
+  LIBRARY DESTINATION lib/swift/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>
   RUNTIME DESTINATION bin)
 install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/swift/XCTest.swiftdoc
   ${CMAKE_CURRENT_BINARY_DIR}/swift/XCTest.swiftmodule
-  DESTINATION lib/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>/${swift_arch})
+  DESTINATION lib/swift/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>/${swift_arch})
 
 add_subdirectory(cmake/modules)

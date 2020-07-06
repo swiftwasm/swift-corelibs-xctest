@@ -11,10 +11,16 @@
 //  Prints test progress to stdout.
 //
 
+#if canImport(Glibc)
+import Glibc
+#endif
+
 /// Prints textual representations of each XCTestObservation event to stdout.
 /// Mirrors the Apple XCTest output exactly.
 internal class PrintObserver: XCTestObservation {
+#if !os(WASI)
     func testBundleWillStart(_ testBundle: Bundle) {}
+#endif
 
     func testSuiteWillStart(_ testSuite: XCTestSuite) {
         printAndFlush("Test Suite '\(testSuite.name)' started at \(dateFormatter.string(from: testSuite.testRun!.startDate!))")
@@ -65,17 +71,21 @@ internal class PrintObserver: XCTestObservation {
         )
     }
 
+#if !os(WASI)
     func testBundleDidFinish(_ testBundle: Bundle) {}
+#endif
 
     private lazy var dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+#if !os(WASI)
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+#endif
         return formatter
     }()
 
     fileprivate func printAndFlush(_ message: String) {
         print(message)
-        #if !os(Android)
+        #if !os(Android) && !os(WASI)
         fflush(stdout)
         #endif
     }
