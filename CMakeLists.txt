@@ -44,6 +44,7 @@ add_library(XCTest
   Sources/XCTest/Private/ArgumentParser.swift
   Sources/XCTest/Private/SourceLocation.swift
   Sources/XCTest/Private/IgnoredErrors.swift
+  Sources/XCTest/Public/CodableObserver.swift
   Sources/XCTest/Public/XCTestRun.swift
   Sources/XCTest/Public/XCTestMain.swift
   Sources/XCTest/Public/XCTestCase.swift
