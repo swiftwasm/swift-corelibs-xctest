@@ -133,6 +133,6 @@ install(TARGETS XCTest
 install(FILES
   ${CMAKE_CURRENT_BINARY_DIR}/swift/XCTest.swiftdoc
   ${CMAKE_CURRENT_BINARY_DIR}/swift/XCTest.swiftmodule
-  DESTINATION lib/swift/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>/${swift_arch})
+  DESTINATION lib/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>/${swift_arch})
 
 add_subdirectory(cmake/modules)
