@@ -76,7 +76,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL WASI)
   PRIVATE
     -sdk ${CMAKE_SYSROOT}
     -target wasm32-unknown-wasi
-    -I ${SWIFT_FOUNDATION_PATH}
+    # For wasm target, we always need to pass -static-stdlib to import modules under
+    # lib/swift_static. So we need to add -static-stdlib when building xctest to import
+    # Foundation and CoreFoundation. But swift driver doesn't propagate -static-stdlib
+    # for merge-module job and it fail due to unresolvable imports. So add -Xfrontend
+    # option to add -use-static-resource-dir for merge-module job forcely.
+    # In main branch, Foundation imports CoreFoundation with implementationOnly attribute,
+    # so we don't need this workaround for main branch.
+    -Xfrontend -use-static-resource-dir
   )
 endif()
 
