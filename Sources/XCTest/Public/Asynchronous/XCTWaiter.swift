@@ -10,7 +10,9 @@
 //  XCTWaiter.swift
 //
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import CoreFoundation
+#endif
 
 /// Events are reported to the waiter's delegate via these methods. XCTestCase conforms to this
 /// protocol and will automatically report timeouts and other unexpected events as test failures.
@@ -367,10 +369,10 @@ private extension XCTWaiter {
 
     func cancelPrimitiveWait() {
         guard let runLoop = runLoop else { return }
-#if os(Windows)
-        runLoop._stop()
-#else
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
         CFRunLoopStop(runLoop.getCFRunLoop())
+#else
+        runLoop._stop()
 #endif
     }
 }

@@ -100,11 +100,14 @@ if(ENABLE_TESTING)
   if(EXISTS ${LLVM_MAIN_SRC_DIR}/utils/lit/lit.py)
     set(LIT_COMMAND "${LLVM_MAIN_SRC_DIR}/utils/lit/lit.py"
         CACHE STRING "command used to spawn llvm-lit")
+  elseif(LLVM_DEFAULT_EXTERNAL_LIT)
+    set(LIT_COMMAND "${LLVM_DEFAULT_EXTERNAL_LIT}"
+        CACHE STRING "command used to spawn llvm-lit")
   else()
     find_program(LIT_COMMAND NAMES llvm-lit lit.py lit)
   endif()
 
-  find_package(Python2 COMPONENTS Interpreter REQUIRED)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
   add_custom_target(check-xctest
                     COMMAND
@@ -115,7 +118,7 @@ if(ENABLE_TESTING)
                       LIBDISPATCH_BUILD_DIR=${XCTEST_PATH_TO_LIBDISPATCH_BUILD}
                       LIBDISPATCH_OVERLAY_DIR=${XCTEST_PATH_TO_LIBDISPATCH_BUILD}/src/swift
                       SWIFT_EXEC=${CMAKE_Swift_COMPILER}
-                      $<TARGET_FILE:Python2::Interpreter> ${LIT_COMMAND} -sv ${CMAKE_SOURCE_DIR}/Tests/Functional
+                      $<TARGET_FILE:Python3::Interpreter> ${LIT_COMMAND} -sv ${CMAKE_SOURCE_DIR}/Tests/Functional
                     COMMENT
                       "Running XCTest functional test suite"
                     DEPENDS
