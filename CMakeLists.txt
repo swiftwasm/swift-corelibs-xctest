@@ -72,15 +72,6 @@ set_target_properties(XCTest PROPERTIES
   Swift_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/swift
   INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/swift)
 
-if(CMAKE_SYSTEM_NAME STREQUAL WASI)
-  target_compile_options(XCTest
-  PRIVATE
-    -sdk ${CMAKE_SYSROOT}
-    -target wasm32-unknown-wasi
-    -I ${SWIFT_FOUNDATION_PATH}
-  )
-endif()
-
 if(ENABLE_TESTING)
   enable_testing()
 
