@@ -84,10 +84,10 @@ open class XCTestCase: XCTest {
             }
         }
     }
+#endif
 
     /// An internal object implementing performance measurements.
     internal var _performanceMeter: PerformanceMeter?
-#endif
 
     open override var testRunClass: AnyClass? {
         return XCTestCaseRun.self
