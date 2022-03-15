@@ -13,6 +13,8 @@
 private enum _XCTAssertion {
     case equal
     case equalWithAccuracy
+    case identical
+    case notIdentical
     case greaterThan
     case greaterThanOrEqual
     case lessThan
@@ -32,6 +34,8 @@ private enum _XCTAssertion {
         switch(self) {
         case .equal: return "XCTAssertEqual"
         case .equalWithAccuracy: return "XCTAssertEqual"
+        case .identical: return "XCTAssertIdentical"
+        case .notIdentical: return "XCTAssertNotIdentical"
         case .greaterThan: return "XCTAssertGreaterThan"
         case .greaterThanOrEqual: return "XCTAssertGreaterThanOrEqual"
         case .lessThan: return "XCTAssertLessThan"
@@ -79,7 +83,7 @@ private enum _XCTAssertionResult {
     }
 }
 
-private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion, message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line, expression: () throws -> _XCTAssertionResult) {
+private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion, message: @autoclosure () -> String, file: StaticString, line: UInt, expression: () throws -> _XCTAssertionResult) {
     let result: _XCTAssertionResult
     do {
         result = try expression()
@@ -190,7 +194,7 @@ public func XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -> 
     _XCTAssertEqual(try expression1(), try expression2(), accuracy: accuracy, message(), file: file, line: line)
 }
 
-private func _XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
+private func _XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String, file: StaticString, line: UInt) {
     _XCTEvaluateAssertion(.equalWithAccuracy, message: message(), file: file, line: line) {
         let (value1, value2) = (try expression1(), try expression2())
         if areEqual(value1, value2, accuracy: accuracy) {
@@ -204,6 +208,34 @@ private func _XCTAssertEqual<T: Numeric>(_ expression1: @autoclosure () throws -
 @available(*, deprecated, renamed: "XCTAssertEqual(_:_:accuracy:file:line:)")
 public func XCTAssertEqualWithAccuracy<T: FloatingPoint>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
     XCTAssertEqual(try expression1(), try expression2(), accuracy: accuracy, message(), file: file, line: line)
+}
+
+private func describe(_ object: AnyObject?) -> String {
+    return object == nil ? String(describing: object) : String(describing: object!)
+}
+
+/// Asserts that two values are identical.
+public func XCTAssertIdentical(_ expression1: @autoclosure () throws -> AnyObject?, _ expression2: @autoclosure () throws -> AnyObject?, _ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line) {
+    _XCTEvaluateAssertion(.identical, message: message(), file: file, line: line) {
+        let (value1, value2) = (try expression1(), try expression2())
+        if value1 === value2 {
+            return .success
+        } else {
+            return .expectedFailure("(\"\(describe(value1))\") is not identical to (\"\(describe(value2))\")")
+        }
+    }
+}
+
+/// Asserts that two values aren't identical.
+public func XCTAssertNotIdentical(_ expression1: @autoclosure () throws -> AnyObject?, _ expression2: @autoclosure () throws -> AnyObject?, _ message: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line) {
+    _XCTEvaluateAssertion(.notIdentical, message: message(), file: file, line: line) {
+        let (value1, value2) = (try expression1(), try expression2())
+        if value1 !== value2 {
+            return .success
+        } else {
+            return .expectedFailure("(\"\(describe(value1))\") is identical to (\"\(describe(value2))\")")
+        }
+    }
 }
 
 public func XCTAssertFalse(_ expression: @autoclosure () throws -> Bool, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
@@ -291,7 +323,7 @@ public func XCTAssertNotEqual<T: Numeric>(_ expression1: @autoclosure () throws 
     _XCTAssertNotEqual(try expression1(), try expression2(), accuracy: accuracy, message(), file: file, line: line)
 }
 
-private func _XCTAssertNotEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line) {
+private func _XCTAssertNotEqual<T: Numeric>(_ expression1: @autoclosure () throws -> T, _ expression2: @autoclosure () throws -> T, accuracy: T, _ message: @autoclosure () -> String, file: StaticString, line: UInt) {
     _XCTEvaluateAssertion(.notEqualWithAccuracy, message: message(), file: file, line: line) {
         let (value1, value2) = (try expression1(), try expression2())
         if !areEqual(value1, value2, accuracy: accuracy) {
@@ -377,6 +409,12 @@ public func XCTFail(_ message: String = "", file: StaticString = #file, line: UI
 }
 
 public func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line, _ errorHandler: (_ error: Swift.Error) -> Void = { _ in }) {
+    let rethrowsOverload: (() throws -> T, () -> String, StaticString, UInt, (Swift.Error) throws -> Void) throws -> Void = XCTAssertThrowsError
+
+    try? rethrowsOverload(expression, message, file, line, errorHandler)
+}
+
+public func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T, _ message: @autoclosure () -> String = "", file: StaticString = #file, line: UInt = #line, _ errorHandler: (_ error: Swift.Error) throws -> Void = { _ in }) rethrows {
     _XCTEvaluateAssertion(.throwsError, message: message(), file: file, line: line) {
         var caughtErrorOptional: Swift.Error?
         do {
@@ -386,7 +424,7 @@ public func XCTAssertThrowsError<T>(_ expression: @autoclosure () throws -> T, _
         }
 
         if let caughtError = caughtErrorOptional {
-            errorHandler(caughtError)
+            try errorHandler(caughtError)
             return .success
         } else {
             return .expectedFailure("did not throw error")

@@ -201,29 +201,23 @@ open class XCTestCase: XCTest {
     /// class.
     open class func tearDown() {}
 
-    private var teardownBlocks: [() -> Void] = []
-    private var teardownBlocksDequeued: Bool = false
-    #if !os(WASI)
-    private let teardownBlocksQueue: DispatchQueue = DispatchQueue(label: "org.swift.XCTest.XCTestCase.teardownBlocks")
-    #endif
+    private let teardownBlocksState = TeardownBlocksState()
 
     /// Registers a block of teardown code to be run after the current test
     /// method ends.
     open func addTeardownBlock(_ block: @escaping () -> Void) {
-        #if os(WASI)
-        teardownBlocks.append(block)
-        #else
-        teardownBlocksQueue.sync {
-            precondition(!self.teardownBlocksDequeued, "API violation -- attempting to add a teardown block after teardown blocks have been dequeued")
-            self.teardownBlocks.append(block)
-        }
-        #endif
+        teardownBlocksState.append(block)
+    }
+
+    /// Registers a block of teardown code to be run after the current test
+    /// method ends.
+    @available(macOS 12.0, *)
+    public func addTeardownBlock(_ block: @Sendable @escaping () async throws -> Void) {
+        teardownBlocksState.appendAsync(block)
     }
 
     private func performSetUpSequence() {
-        do {
-            try setUpWithError()
-        } catch {
+        func handleErrorDuringSetUp(_ error: Error) {
             if error.xct_shouldRecordAsTestFailure {
                 recordFailure(for: error)
             }
@@ -237,10 +231,42 @@ open class XCTestCase: XCTest {
             }
         }
 
+        do {
+            if #available(macOS 12.0, *) {
+                try awaitUsingExpectation {
+                    try await self.setUp()
+                }
+            }
+        } catch {
+            handleErrorDuringSetUp(error)
+        }
+
+        do {
+            try setUpWithError()
+        } catch {
+            handleErrorDuringSetUp(error)
+        }
+
         setUp()
     }
 
     private func performTearDownSequence() {
+        func handleErrorDuringTearDown(_ error: Error) {
+            if error.xct_shouldRecordAsTestFailure {
+                recordFailure(for: error)
+            }
+        }
+
+        func runTeardownBlocks() {
+            for block in self.teardownBlocksState.finalize().reversed() {
+                do {
+                    try block()
+                } catch {
+                    handleErrorDuringTearDown(error)
+                }
+            }
+        }
+
         runTeardownBlocks()
 
         tearDown()
@@ -248,18 +274,7 @@ open class XCTestCase: XCTest {
         do {
             try tearDownWithError()
         } catch {
-            if error.xct_shouldRecordAsTestFailure {
-                recordFailure(for: error)
-            }
-        }
-    }
-
-    private func runTeardownBlocks() {
-        let closure = { () -> [() -> Void] in
-            self.teardownBlocksDequeued = true
-            let blocks = self.teardownBlocks
-            self.teardownBlocks = []
-            return blocks
+            handleErrorDuringTearDown(error)
         }
         #if os(WASI)
         let blocks = closure()
@@ -267,8 +282,14 @@ open class XCTestCase: XCTest {
         let blocks = teardownBlocksQueue.sync(execute: closure)
         #endif
 
-        for block in blocks.reversed() {
-            block()
+        do {
+            if #available(macOS 12.0, *) {
+                try awaitUsingExpectation {
+                    try await self.tearDown()
+                }
+            }
+        } catch {
+            handleErrorDuringTearDown(error)
         }
     }
 
@@ -309,3 +330,59 @@ private func test<T: XCTestCase>(_ testFunc: @escaping (T) -> () throws -> Void)
         try testFunc(testCase)()
     }
 }
+
+@available(macOS 12.0, *)
+public func asyncTest<T: XCTestCase>(
+    _ testClosureGenerator: @escaping (T) -> () async throws -> Void
+) -> (T) -> () throws -> Void {
+    return { (testType: T) in
+        let testClosure = testClosureGenerator(testType)
+        return {
+            try awaitUsingExpectation(testClosure)
+        }
+    }
+}
+
+@available(macOS 12.0, *)
+func awaitUsingExpectation(
+    _ closure: @escaping () async throws -> Void
+) throws -> Void {
+    let expectation = XCTestExpectation(description: "async test completion")
+    let thrownErrorWrapper = ThrownErrorWrapper()
+
+    Task {
+        defer { expectation.fulfill() }
+
+        do {
+            try await closure()
+        } catch {
+            thrownErrorWrapper.error = error
+        }
+    }
+
+    _ = XCTWaiter.wait(for: [expectation], timeout: asyncTestTimeout)
+
+    if let error = thrownErrorWrapper.error {
+        throw error
+    }
+}
+
+private final class ThrownErrorWrapper: @unchecked Sendable {
+
+    private var _error: Error?
+
+    var error: Error? {
+        get {
+            XCTWaiter.subsystemQueue.sync { _error }
+        }
+        set {
+            XCTWaiter.subsystemQueue.sync { _error = newValue }
+        }
+    }
+}
+
+
+// This time interval is set to a very large value due to their being no real native timeout functionality within corelibs-xctest.
+// With the introduction of async/await support, the framework now relies on XCTestExpectations internally to coordinate the addition async portions of setup and tear down.
+// This time interval is the timeout corelibs-xctest uses with XCTestExpectations.
+private let asyncTestTimeout: TimeInterval = 60 * 60 * 24 * 30
