@@ -232,11 +232,13 @@ open class XCTestCase: XCTest {
         }
 
         do {
+            #if !os(WASI)
             if #available(macOS 12.0, *) {
                 try awaitUsingExpectation {
                     try await self.setUp()
                 }
             }
+            #endif
         } catch {
             handleErrorDuringSetUp(error)
         }
@@ -276,18 +278,15 @@ open class XCTestCase: XCTest {
         } catch {
             handleErrorDuringTearDown(error)
         }
-        #if os(WASI)
-        let blocks = closure()
-        #else
-        let blocks = teardownBlocksQueue.sync(execute: closure)
-        #endif
 
         do {
+            #if !os(WASI)
             if #available(macOS 12.0, *) {
                 try awaitUsingExpectation {
                     try await self.tearDown()
                 }
             }
+            #endif
         } catch {
             handleErrorDuringTearDown(error)
         }
@@ -331,6 +330,7 @@ private func test<T: XCTestCase>(_ testFunc: @escaping (T) -> () throws -> Void)
     }
 }
 
+#if !os(WASI)
 @available(macOS 12.0, *)
 public func asyncTest<T: XCTestCase>(
     _ testClosureGenerator: @escaping (T) -> () async throws -> Void
@@ -366,6 +366,7 @@ func awaitUsingExpectation(
         throw error
     }
 }
+#endif
 
 private final class ThrownErrorWrapper: @unchecked Sendable {
 
