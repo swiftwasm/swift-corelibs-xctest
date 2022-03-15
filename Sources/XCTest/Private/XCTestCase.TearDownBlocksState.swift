@@ -22,7 +22,13 @@ extension XCTestCase {
         @available(macOS 12.0, *)
         func appendAsync(_ block: @Sendable @escaping () async throws -> Void) {
             self.append {
+                #if os(WASI)
                 try awaitUsingExpectation { try await block() }
+                #else
+                Task {
+                    try await block()
+                }
+                #endif
             }
         }
 
