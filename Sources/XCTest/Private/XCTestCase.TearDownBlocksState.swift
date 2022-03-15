@@ -27,18 +27,29 @@ extension XCTestCase {
         }
 
         func append(_ block: @escaping () throws -> Void) {
+            #if os(WASI)
+            precondition(wasFinalized == false, "API violation -- attempting to add a teardown block after teardown blocks have been dequeued")
+            blocks.append(block)
+            #else
             XCTWaiter.subsystemQueue.sync {
                 precondition(wasFinalized == false, "API violation -- attempting to add a teardown block after teardown blocks have been dequeued")
                 blocks.append(block)
             }
+            #endif
         }
         
         func finalize() -> [() throws -> Void] {
+            #if os(WASI)
+            precondition(wasFinalized == false, "API violation -- attempting to run teardown blocks after they've already run")
+            wasFinalized = true
+            return blocks
+            #else
             XCTWaiter.subsystemQueue.sync {
                 precondition(wasFinalized == false, "API violation -- attempting to run teardown blocks after they've already run")
                 wasFinalized = true
                 return blocks
             }
+            #endif
         }
     }
 }
