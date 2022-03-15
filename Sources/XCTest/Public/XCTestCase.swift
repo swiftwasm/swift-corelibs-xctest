@@ -367,7 +367,6 @@ func awaitUsingExpectation(
         throw error
     }
 }
-#endif
 
 private final class ThrownErrorWrapper: @unchecked Sendable {
 
@@ -382,6 +381,7 @@ private final class ThrownErrorWrapper: @unchecked Sendable {
         }
     }
 }
+#endif
 
 
 // This time interval is set to a very large value due to their being no real native timeout functionality within corelibs-xctest.
