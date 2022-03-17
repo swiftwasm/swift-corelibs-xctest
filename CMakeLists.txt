@@ -22,10 +22,7 @@ endif()
 set(XCTEST_WASI_UNAVAILABLE_SOURCES)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
 list(APPEND XCTEST_WASI_UNAVAILABLE_SOURCES
-  Sources/XCTest/Private/WallClockTimeMetric.swift
-  Sources/XCTest/Private/PerformanceMeter.swift
   Sources/XCTest/Private/WaiterManager.swift
-  Sources/XCTest/Public/XCTestCase+Performance.swift
   Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift
   Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift
   Sources/XCTest/Public/Asynchronous/XCTNSNotificationExpectation.swift
@@ -44,6 +41,9 @@ add_library(XCTest
   Sources/XCTest/Private/ArgumentParser.swift
   Sources/XCTest/Private/SourceLocation.swift
   Sources/XCTest/Private/IgnoredErrors.swift
+  Sources/XCTest/Private/PerformanceMeter.swift
+  Sources/XCTest/Private/WallClockTimeMetric.swift
+  Sources/XCTest/Public/XCTestCase+Performance.swift
   Sources/XCTest/Public/CodableObserver.swift
   Sources/XCTest/Public/XCTestRun.swift
   Sources/XCTest/Public/XCTestMain.swift
