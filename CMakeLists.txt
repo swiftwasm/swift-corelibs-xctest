@@ -43,6 +43,7 @@ add_library(XCTest
   Sources/XCTest/Private/IgnoredErrors.swift
   Sources/XCTest/Private/PerformanceMeter.swift
   Sources/XCTest/Private/WallClockTimeMetric.swift
+  Sources/XCTest/Private/XCTestCase.TearDownBlocksState.swift
   Sources/XCTest/Public/XCTestCase+Performance.swift
   Sources/XCTest/Public/CodableObserver.swift
   Sources/XCTest/Public/XCTestRun.swift
