@@ -21,7 +21,11 @@ internal protocol ManageableWaiter: AnyObject, Equatable {
 private protocol ManageableWaiterWatchdog {
     func cancel()
 }
+#if USE_SWIFT_CONCURRENCY_WAITER
+extension Task: ManageableWaiterWatchdog {}
+#else
 extension DispatchWorkItem: ManageableWaiterWatchdog {}
+#endif
 
 /// This class manages the XCTWaiter instances which are currently waiting on a particular thread.
 /// It facilitates "nested" waiters, allowing an outer waiter to interrupt inner waiters if it times
@@ -111,6 +115,16 @@ internal final class WaiterManager<WaiterType: ManageableWaiter> : NSObject {
         }
     }
 
+#if USE_SWIFT_CONCURRENCY_WAITER
+    private static func installWatchdog(for waiter: WaiterType, timeout: TimeInterval) -> ManageableWaiterWatchdog {
+        let outerTimeoutSlop = TimeInterval(0.25)
+        let task = Task { [weak waiter] in
+            try await Task.sleep(nanoseconds: UInt64((timeout + outerTimeoutSlop) * 1_000_000_000))
+            waiter?.queue_handleWatchdogTimeout()
+        }
+        return task
+    }
+#else
     private static func installWatchdog(for waiter: WaiterType, timeout: TimeInterval) -> ManageableWaiterWatchdog {
         // Use DispatchWorkItem instead of a basic closure since it can be canceled.
         let watchdog = DispatchWorkItem { [weak waiter] in
@@ -123,6 +137,7 @@ internal final class WaiterManager<WaiterType: ManageableWaiter> : NSObject {
 
         return watchdog
     }
+#endif
 
     func queue_handleWatchdogTimeout(of waiter: WaiterType) {
         dispatchPrecondition(condition: .onQueue(XCTWaiter.subsystemQueue))

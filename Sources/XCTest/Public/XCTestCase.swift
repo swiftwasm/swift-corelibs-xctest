@@ -331,7 +331,6 @@ private func test<T: XCTestCase>(_ testFunc: @escaping (T) -> () throws -> Void)
     }
 }
 
-#if !os(WASI)
 @available(macOS 12.0, *)
 public func asyncTest<T: XCTestCase>(
     _ testClosureGenerator: @escaping (T) -> () async throws -> Void
@@ -381,7 +380,6 @@ private final class ThrownErrorWrapper: @unchecked Sendable {
         }
     }
 }
-#endif
 
 
 // This time interval is set to a very large value due to their being no real native timeout functionality within corelibs-xctest.
