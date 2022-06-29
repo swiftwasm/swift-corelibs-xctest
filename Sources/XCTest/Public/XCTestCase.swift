@@ -233,13 +233,11 @@ open class XCTestCase: XCTest {
         }
 
         do {
-            #if !os(WASI)
             if #available(macOS 12.0, *) {
                 try awaitUsingExpectation {
                     try await self.setUp()
                 }
             }
-            #endif
         } catch {
             handleErrorDuringSetUp(error)
         }
@@ -281,13 +279,11 @@ open class XCTestCase: XCTest {
         }
 
         do {
-            #if !os(WASI)
             if #available(macOS 12.0, *) {
                 try awaitUsingExpectation {
                     try await self.tearDown()
                 }
             }
-            #endif
         } catch {
             handleErrorDuringTearDown(error)
         }
