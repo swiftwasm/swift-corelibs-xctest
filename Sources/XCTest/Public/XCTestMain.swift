@@ -59,19 +59,22 @@
 ///
 /// - Parameter testCases: An array of test cases run, each produced by a call to the `testCase` function
 /// - seealso: `testCase`
-public func XCTMain(_ testCases: [XCTestCaseEntry]) -> Never {
+public func XCTMain(_ testCases: [XCTestCaseEntry]) {
     XCTMain(testCases, arguments: CommandLine.arguments)
 }
 
-public func XCTMain(_ testCases: [XCTestCaseEntry], arguments: [String]) -> Never {
+public func XCTMain(_ testCases: [XCTestCaseEntry], arguments: [String]) {
     XCTMain(testCases, arguments: arguments, observers: [PrintObserver()])
 }
+
+@_silgen_name("XCTMainRunLoopMain")
+func XCTMainRunLoopMain()
 
 public func XCTMain(
     _ testCases: [XCTestCaseEntry],
     arguments: [String],
     observers: [XCTestObservation]
-) -> Never {
+) {
     #if !os(WASI)
     let testBundle = Bundle.main
     #endif
@@ -151,10 +154,22 @@ public func XCTMain(
         observationCenter.testBundleWillStart(testBundle)
 #endif
         rootTestSuite.run()
+        @Sendable func afterRun() -> Never {
 #if !os(WASI)
         observationCenter.testBundleDidFinish(testBundle)
 #endif
 
         exit(rootTestSuite.testRun!.totalFailureCount == 0 ? EXIT_SUCCESS : EXIT_FAILURE)
+        }
+
+        if let performTask = rootTestSuite.performTask {
+            Task {
+                _ = await performTask.value
+                afterRun()
+            }
+            XCTMainRunLoopMain()
+        } else {
+            afterRun()
+        }
     }
 }

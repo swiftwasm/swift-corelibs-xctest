@@ -36,6 +36,9 @@ open class XCTestCase: XCTest {
 
     private var skip: XCTSkip?
 
+    private var invokeTestTask: Task<Void, Never>?
+    fileprivate var testClosureTask: Task<Void, Error>?
+
     /// The name of the test case, consisting of its class name and the method
     /// name it will run.
     open override var name: String {
@@ -92,6 +95,7 @@ open class XCTestCase: XCTest {
     }
 
     open override func perform(_ run: XCTestRun) {
+        self.performTask = Task {
         guard let testRun = run as? XCTestCaseRun else {
             fatalError("Wrong XCTestRun class.")
         }
@@ -100,6 +104,10 @@ open class XCTestCase: XCTest {
         testRun.start()
         invokeTest()
 
+        if let invokeTestTask = invokeTestTask {
+            _ = await invokeTestTask.value
+        }
+
         #if !os(WASI)
         let allExpectations = XCTWaiter.subsystemQueue.sync { _allExpectations }
         failIfExpectationsNotWaitedFor(allExpectations)
@@ -107,6 +115,7 @@ open class XCTestCase: XCTest {
 
         testRun.stop()
         XCTCurrentTestCase = nil
+        }
     }
 
     /// The designated initializer for SwiftXCTest's XCTestCase.
@@ -121,11 +130,15 @@ open class XCTestCase: XCTest {
     /// Invoking a test performs its setUp, invocation, and tearDown. In
     /// general this should not be called directly.
     open func invokeTest() {
-        performSetUpSequence()
+        self.invokeTestTask = Task {
+        await performSetUpSequence()
 
         do {
             if skip == nil {
                 try testClosure(self)
+            }
+            if let task = testClosureTask {
+                _ = try await task.value
             }
         } catch {
             if error.xct_shouldRecordAsTestFailure {
@@ -145,7 +158,8 @@ open class XCTestCase: XCTest {
             testRun?.recordSkip(description: skip.summary, sourceLocation: skip.sourceLocation)
         }
 
-        performTearDownSequence()
+        await performTearDownSequence()
+        }
     }
 
     /// Records a failure in the execution of the test and is used by all test
@@ -217,7 +231,9 @@ open class XCTestCase: XCTest {
         teardownBlocksState.appendAsync(block)
     }
 
-    private func performSetUpSequence() {
+    // FIXME(katei): `private` is removed from the following function because
+    // Swift 5.7 incorrectly requires the hidden symbol from subclass definitions.
+    func performSetUpSequence() async {
         func handleErrorDuringSetUp(_ error: Error) {
             if error.xct_shouldRecordAsTestFailure {
                 recordFailure(for: error)
@@ -234,7 +250,7 @@ open class XCTestCase: XCTest {
 
         do {
             if #available(macOS 12.0, *) {
-                try awaitUsingExpectation {
+                try await awaitUsingExpectation {
                     try await self.setUp()
                 }
             }
@@ -248,29 +264,37 @@ open class XCTestCase: XCTest {
             handleErrorDuringSetUp(error)
         }
 
-        setUp()
+        // Workaround: Compiler incorrectly infers the sync 'tearDown' as async one in async context.
+        func doSetUp() {
+            setUp()
+        }
+        doSetUp()
     }
 
-    private func performTearDownSequence() {
+    private func performTearDownSequence() async {
         func handleErrorDuringTearDown(_ error: Error) {
             if error.xct_shouldRecordAsTestFailure {
                 recordFailure(for: error)
             }
         }
 
-        func runTeardownBlocks() {
+        func runTeardownBlocks() async {
             for block in self.teardownBlocksState.finalize().reversed() {
                 do {
-                    try block()
+                    try await block()
                 } catch {
                     handleErrorDuringTearDown(error)
                 }
             }
         }
 
-        runTeardownBlocks()
+        await runTeardownBlocks()
 
-        tearDown()
+        // Workaround: Compiler incorrectly infers the sync 'tearDown' as async one in async context.
+        func doTearDown() {
+            tearDown()
+        }
+        doTearDown()
 
         do {
             try tearDownWithError()
@@ -279,11 +303,7 @@ open class XCTestCase: XCTest {
         }
 
         do {
-            if #available(macOS 12.0, *) {
-                try awaitUsingExpectation {
-                    try await self.tearDown()
-                }
-            }
+            try await self.tearDown()
         } catch {
             handleErrorDuringTearDown(error)
         }
@@ -334,7 +354,10 @@ public func asyncTest<T: XCTestCase>(
     return { (testType: T) in
         let testClosure = testClosureGenerator(testType)
         return {
-            try awaitUsingExpectation(testClosure)
+            assert(testType.testClosureTask == nil, "Async test case \(testType) cannot be run more than once")
+            testType.testClosureTask = Task {
+                try await awaitUsingExpectation(testClosure)
+            }
         }
     }
 }
@@ -342,7 +365,11 @@ public func asyncTest<T: XCTestCase>(
 @available(macOS 12.0, *)
 func awaitUsingExpectation(
     _ closure: @escaping () async throws -> Void
-) throws -> Void {
+) async throws -> Void {
+#if os(WASI)
+    try await closure()
+    return
+#else
     let expectation = XCTestExpectation(description: "async test completion")
     let thrownErrorWrapper = ThrownErrorWrapper()
 
@@ -361,6 +388,7 @@ func awaitUsingExpectation(
     if let error = thrownErrorWrapper.error {
         throw error
     }
+#endif
 }
 
 private final class ThrownErrorWrapper: @unchecked Sendable {

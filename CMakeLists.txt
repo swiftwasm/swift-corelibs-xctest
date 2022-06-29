@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15.1)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-project(XCTest LANGUAGES Swift)
+project(XCTest LANGUAGES Swift CXX)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(USE_FOUNDATION_FRAMEWORK "Use Foundation.framework on Darwin" NO)
@@ -69,6 +69,14 @@ add_library(XCTest
   Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift
   
   ${XCTEST_WASI_UNAVAILABLE_SOURCES})
+
+add_library(XCTestConcurrencySupport OBJECT
+  Sources/XCTest/Private/ConcurrencySupport/ConcurrencySupport.cpp)
+add_dependencies(XCTest XCTestConcurrencySupport)
+
+set_property(TARGET XCTest PROPERTY STATIC_LIBRARY_OPTIONS
+  $<TARGET_OBJECTS:XCTestConcurrencySupport>)
+target_link_options(XCTest PRIVATE $<TARGET_OBJECTS:XCTestConcurrencySupport>)
 
 if(USE_SWIFT_CONCURRENCY_WAITER)
   target_compile_definitions(XCTest PRIVATE
