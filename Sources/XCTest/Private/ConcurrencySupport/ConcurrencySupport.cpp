@@ -9,7 +9,7 @@
 SWIFT_EXPORT_FROM(swift_Concurrency)
 extern void *_Nullable swift_task_enqueueGlobal_hook;
 
-SWIFT_EXPORT_FROM(swift_Concurrency) SWIFT_CC(swift)
+extern "C" SWIFT_EXPORT_FROM(swift_Concurrency) SWIFT_CC(swift)
 void swift_task_asyncMainDrainQueue [[noreturn]]();
 
 SWIFT_CC(swift)
