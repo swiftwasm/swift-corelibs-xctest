@@ -3,10 +3,18 @@ cmake_minimum_required(VERSION 3.15.1)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-project(XCTest LANGUAGES Swift)
+project(XCTest LANGUAGES Swift CXX)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(USE_FOUNDATION_FRAMEWORK "Use Foundation.framework on Darwin" NO)
+
+set(USE_SWIFT_CONCURRENCY_WAITER_default NO)
+
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
+  set(USE_SWIFT_CONCURRENCY_WAITER_default ON)
+endif()
+
+option(USE_SWIFT_CONCURRENCY_WAITER "Use Swift Concurrency-based waiter implementation" "${USE_SWIFT_CONCURRENCY_WAITER_default}")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL wasm32)
   find_package(dispatch CONFIG REQUIRED)
@@ -22,13 +30,9 @@ endif()
 set(XCTEST_WASI_UNAVAILABLE_SOURCES)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
 list(APPEND XCTEST_WASI_UNAVAILABLE_SOURCES
-  Sources/XCTest/Private/WaiterManager.swift
-  Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift
-  Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift
   Sources/XCTest/Public/Asynchronous/XCTNSNotificationExpectation.swift
   Sources/XCTest/Public/Asynchronous/XCTNSPredicateExpectation.swift
-  Sources/XCTest/Public/Asynchronous/XCTWaiter.swift
-  Sources/XCTest/Public/Asynchronous/XCTWaiter+Validation.swift)
+  Sources/XCTest/Public/Asynchronous/XCTestCase+Asynchronous.swift)
 endif()
 
 add_library(XCTest
@@ -40,10 +44,12 @@ add_library(XCTest
   Sources/XCTest/Private/PrintObserver.swift
   Sources/XCTest/Private/ArgumentParser.swift
   Sources/XCTest/Private/SourceLocation.swift
+  Sources/XCTest/Private/WaiterManager.swift
   Sources/XCTest/Private/IgnoredErrors.swift
   Sources/XCTest/Private/PerformanceMeter.swift
   Sources/XCTest/Private/WallClockTimeMetric.swift
   Sources/XCTest/Private/XCTestCase.TearDownBlocksState.swift
+  Sources/XCTest/Private/Shims.swift
   Sources/XCTest/Public/XCTestCase+Performance.swift
   Sources/XCTest/Public/CodableObserver.swift
   Sources/XCTest/Public/XCTestRun.swift
@@ -58,8 +64,26 @@ add_library(XCTest
   Sources/XCTest/Public/XCTestObservationCenter.swift
   Sources/XCTest/Public/XCTAssert.swift
   Sources/XCTest/Public/XCTSkip.swift
+  Sources/XCTest/Public/Asynchronous/XCTWaiter+Validation.swift
+  Sources/XCTest/Public/Asynchronous/XCTWaiter.swift
+  Sources/XCTest/Public/Asynchronous/XCTestExpectation.swift
   
   ${XCTEST_WASI_UNAVAILABLE_SOURCES})
+
+add_library(XCTestConcurrencySupport OBJECT
+  Sources/XCTest/Private/ConcurrencySupport/ConcurrencySupport.cpp)
+set_property(TARGET XCTestConcurrencySupport PROPERTY POSITION_INDEPENDENT_CODE ON)
+add_dependencies(XCTest XCTestConcurrencySupport)
+
+set_property(TARGET XCTest PROPERTY STATIC_LIBRARY_OPTIONS
+  $<TARGET_OBJECTS:XCTestConcurrencySupport>)
+target_link_options(XCTest PRIVATE $<TARGET_OBJECTS:XCTestConcurrencySupport>)
+
+if(USE_SWIFT_CONCURRENCY_WAITER)
+  target_compile_definitions(XCTest PRIVATE
+    USE_SWIFT_CONCURRENCY_WAITER)
+endif()
+
 if(USE_FOUNDATION_FRAMEWORK)
   target_compile_definitions(XCTest PRIVATE
     USE_FOUNDATION_FRAMEWORK)
