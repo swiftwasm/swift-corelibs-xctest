@@ -36,6 +36,8 @@ open class XCTest {
     /// testRunClass. If the test has not yet been run, this will be nil.
     open private(set) var testRun: XCTestRun? = nil
 
+    internal var performTask: Task<Void, Never>?
+
     /// The method through which tests are executed. Must be overridden by
     /// subclasses.
     open func perform(_ run: XCTestRun) {

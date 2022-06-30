@@ -13,7 +13,7 @@ extension XCTestCase {
     final class TeardownBlocksState {
 
         private var wasFinalized = false
-        private var blocks: [() throws -> Void] = []
+        private var blocks: [() async throws -> Void] = []
 
         // We don't want to overload append(_:) below because of how Swift will implicitly promote sync closures to async closures,
         // which can unexpectedly change their semantics in difficult to track down ways.
@@ -21,14 +21,11 @@ extension XCTestCase {
         // Because of this, we chose the unusual decision to forgo overloading (which is a super sweet language feature <3) to prevent this issue from surprising any contributors to corelibs-xctest
         @available(macOS 12.0, *)
         func appendAsync(_ block: @Sendable @escaping () async throws -> Void) {
-            self.append {
-                #if !os(WASI)
-                try awaitUsingExpectation { try await block() }
-                #else
-                Task {
-                    try await block()
+            XCTWaiter.subsystemQueue.sync {
+                precondition(wasFinalized == false, "API violation -- attempting to add a teardown block after teardown blocks have been dequeued")
+                blocks.append {
+                    try await awaitUsingExpectation { try await block() }
                 }
-                #endif
             }
         }
 
@@ -44,7 +41,7 @@ extension XCTestCase {
             #endif
         }
         
-        func finalize() -> [() throws -> Void] {
+        func finalize() -> [() async throws -> Void] {
             #if os(WASI)
             precondition(wasFinalized == false, "API violation -- attempting to run teardown blocks after they've already run")
             wasFinalized = true
