@@ -45,12 +45,18 @@ open class XCTestSuite: XCTest {
 
         run.start()
         setUp()
+        self.performTask = Task {
         for test in tests {
             test.run()
+            if let childPerformTask = test.performTask {
+                _ = await childPerformTask.value
+            }
             testRun.addTestRun(test.testRun!)
         }
-        tearDown()
+        func doTearDown() { tearDown() }
+        doTearDown()
         run.stop()
+        }
     }
 
     public init(name: String) {

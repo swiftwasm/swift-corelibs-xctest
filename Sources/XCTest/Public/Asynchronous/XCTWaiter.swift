@@ -119,6 +119,7 @@ open class XCTWaiter {
     internal var waitSourceLocation: SourceLocation?
     private weak var manager: WaiterManager<XCTWaiter>?
     private var runLoop: RunLoop?
+    private var primitiveWaitState = PrimitiveWaitState()
 
     private weak var _delegate: XCTWaiterDelegate?
     private let delegateQueue = DispatchQueue(label: "org.swift.XCTest.XCTWaiter.delegate")
@@ -356,7 +357,49 @@ open class XCTWaiter {
 
 }
 
+#if USE_SWIFT_CONCURRENCY_WAITER
+@_silgen_name("swift_task_donateThreadToGlobalExecutorUntil")
+func _task_donateThreadToGlobalExecutorUntil(_ condition: @convention(c) (UnsafeMutableRawPointer) -> Bool, _ context: UnsafeMutableRawPointer)
+
 private extension XCTWaiter {
+    struct PrimitiveWaitState {
+        struct Context {
+            var runOnce: Bool = false
+            var isCancelled: Bool = false
+        }
+        var context: UnsafeMutablePointer<Context>?
+    }
+
+    func primitiveWait(using runLoop: RunLoop, duration timeout: TimeInterval) {
+        // If the waiter is already waiting, do nothing
+        guard primitiveWaitState.context == nil else { return }
+
+        // reset the waiting state
+        let context = UnsafeMutablePointer<PrimitiveWaitState.Context>.allocate(capacity: 1)
+        context.initialize(to: PrimitiveWaitState.Context())
+        primitiveWaitState.context = context
+        // `swift_task_donateThreadToGlobalExecutorUntil` can return when the condition met
+        // or when no runnable job is available. In the latter case, we need to wait again.
+        _task_donateThreadToGlobalExecutorUntil({ contextRawPtr in
+            let context = contextRawPtr.assumingMemoryBound(to: PrimitiveWaitState.Context.self)
+            defer { context.pointee.runOnce = true }
+            return context.pointee.runOnce || context.pointee.isCancelled
+        }, context)
+        context.deinitialize(count: 1)
+        context.deallocate()
+        primitiveWaitState.context = nil
+    }
+
+    func cancelPrimitiveWait() {
+        if let context = primitiveWaitState.context {
+            context.pointee.isCancelled = true
+        }
+    }
+}
+#else
+private extension XCTWaiter {
+    struct PrimitiveWaitState {}
+
     func primitiveWait(using runLoop: RunLoop, duration timeout: TimeInterval) {
         // The contract for `primitiveWait(for:)` explicitly allows waiting for a shorter period than requested
         // by the `timeout` argument. Only run for a short time in case `cancelPrimitiveWait()` was called and
@@ -376,6 +419,7 @@ private extension XCTWaiter {
 #endif
     }
 }
+#endif
 
 extension XCTWaiter: Equatable {
     public static func == (lhs: XCTWaiter, rhs: XCTWaiter) -> Bool {
