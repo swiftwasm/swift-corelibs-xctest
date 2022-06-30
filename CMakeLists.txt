@@ -72,6 +72,7 @@ add_library(XCTest
 
 add_library(XCTestConcurrencySupport OBJECT
   Sources/XCTest/Private/ConcurrencySupport/ConcurrencySupport.cpp)
+set_property(TARGET XCTestConcurrencySupport PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_dependencies(XCTest XCTestConcurrencySupport)
 
 set_property(TARGET XCTest PROPERTY STATIC_LIBRARY_OPTIONS
