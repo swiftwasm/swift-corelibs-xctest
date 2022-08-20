@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15.1)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
-project(XCTest LANGUAGES Swift CXX)
+project(XCTest LANGUAGES Swift C CXX)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(USE_FOUNDATION_FRAMEWORK "Use Foundation.framework on Darwin" NO)
