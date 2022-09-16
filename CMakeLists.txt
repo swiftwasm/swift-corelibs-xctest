@@ -112,6 +112,7 @@ endif()
 if(ENABLE_TESTING)
   enable_testing()
 
+  enable_language(C)
   find_package(LLVM CONFIG)
   if(LLVM_FOUND)
     message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
